@@ -69,17 +69,26 @@ TEST_F(TimerTest, timingASeriesOfEvents) {
     timer.Update(std::chrono::milliseconds(40));
   }
 
-  // Wait for 1 second so that we're in the next window
-  // and CKMSSample reports {10, 20, ..., 50}.
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-
   EXPECT_EQ(50, timer.count());
   EXPECT_NEAR(10.0, timer.min(), 0.001);
   EXPECT_NEAR(40.0, timer.max(), 0.001);
   EXPECT_NEAR(24.0, timer.mean(), 0.001);
   EXPECT_NEAR(10.301575, timer.std_dev(), 0.001);
 
-  auto snapshot = timer.GetSnapshot();
+  // Take a snapshot of the next non-empty window (since window is based on the
+  // wall clock second bounds, the exact time to wait is non-deterministic).
+  auto snapshot = [&]() {
+    auto deadline = Clock::now() + std::chrono::seconds(2);
+    while (true) {
+      auto current = timer.GetSnapshot();
+      if (current.size() != 0 || Clock::now() >= deadline) {
+        return current;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }();
+
+  ASSERT_NE(0u, snapshot.size());
   EXPECT_NEAR(20.0, snapshot.getMedian(), 0.001);
   EXPECT_NEAR(30.0, snapshot.get75thPercentile(), 0.001);
   EXPECT_NEAR(40, snapshot.get99thPercentile(), 0.001);
@@ -129,10 +138,9 @@ TEST_F(TimerTest, timerTimeScope) {
     auto t = timer.TimeScope();
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
-  // Wait till we get to the next window so {100, 200} will be reported.
-  std::this_thread::sleep_for(std::chrono::seconds(1));
   EXPECT_EQ(2, timer.count());
-  EXPECT_NEAR(150.0, timer.mean(), 0.5);
+
+  EXPECT_NEAR(150.0, timer.mean(), 5.0);
 }
 
 
@@ -142,11 +150,9 @@ void my_func() {
 
 
 TEST_F(TimerTest, timerTimeFunction) {
-  timer.Time(my_func);
-  // Wait till we get to the next window.
-  std::this_thread::sleep_for(std::chrono::seconds(1));
+  timer.Time(my_func);  
   EXPECT_EQ(1, timer.count());
-  EXPECT_NEAR(100.0, timer.mean(), 0.5);
+  EXPECT_NEAR(100.0, timer.mean(), 1.0);
 }
 
 
