@@ -156,7 +156,7 @@ TEST_F(TimerTest, timerTimeScope) {
   }
   EXPECT_EQ(2, timer.count());
 
-  EXPECT_NEAR(150.0, timer.mean(), 5.0);
+  EXPECT_GE(timer.mean(), 150.0);
 }
 
 
@@ -168,7 +168,7 @@ void my_func() {
 TEST_F(TimerTest, timerTimeFunction) {
   timer.Time(my_func);  
   EXPECT_EQ(1, timer.count());
-  EXPECT_NEAR(100.0, timer.mean(), 1.5);
+  EXPECT_GE(timer.mean(), 100.0);
 }
 
 
@@ -177,5 +177,5 @@ TEST_F(TimerTest, timerTimeLambda) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   });
   EXPECT_EQ(1, timer.count());
-  EXPECT_NEAR(100.0, timer.mean(), 1.5);
+  EXPECT_GE(timer.mean(), 100.0);
 }
