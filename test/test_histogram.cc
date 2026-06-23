@@ -66,7 +66,19 @@ TEST(HistogramTest, ckmsWindowSize) {
   EXPECT_EQ(0, histogram1.GetSnapshot().size());
   EXPECT_EQ(0, histogram2.GetSnapshot().size());
 
-  std::this_thread::sleep_for(std::chrono::seconds(1));
+  auto deadline = Clock::now() + std::chrono::seconds(2);
+  
+  while (true) {
+    auto snapshot1 = histogram1.GetSnapshot();
+    auto snapshot2 = histogram2.GetSnapshot();
+    // histogram2 snapshot will always be empty
+    EXPECT_EQ(0, snapshot2.size());
+    
+    if (snapshot1.size() != 0  || Clock::now() >= deadline) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
 
   // Since r1 uses 1 second as the window size,
   // the value 123 must be in the previous window now.
