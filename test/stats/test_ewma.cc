@@ -5,6 +5,7 @@
 #include "medida/stats/ewma.h"
 
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <thread>
 #include <vector>
@@ -154,6 +155,9 @@ TEST(EWMATest, concurrentOperationsStayFinite) {
     threads.emplace_back([&]() {
       for (auto j = 0; j < 10000; j++) {
         ewma.update(1);
+        if (j % 500 == 0) {
+          std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
       }
     });
   }
@@ -161,6 +165,9 @@ TEST(EWMATest, concurrentOperationsStayFinite) {
   threads.emplace_back([&]() {
     for (auto i = 0; i < 1000; i++) {
       ewma.tick();
+      if (i % 50 == 0) {
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+      }
     }
   });
 
@@ -170,12 +177,16 @@ TEST(EWMATest, concurrentOperationsStayFinite) {
       if (!std::isfinite(rate) || rate < 0.0) {
         valid.store(false);
       }
+      if (i % 50 == 0) {
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+      }
     }
   });
 
   threads.emplace_back([&]() {
     for (auto i = 0; i < 100; i++) {
       ewma.clear();
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
   });
 
